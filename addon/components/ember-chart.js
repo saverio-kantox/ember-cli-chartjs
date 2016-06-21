@@ -1,5 +1,4 @@
 import Ember from 'ember';
-import ChartDataUpdater from 'ember-cli-chart/chart-data-updater';
 /* global Chart */
 
 export default Ember.Component.extend({
