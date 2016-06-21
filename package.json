@@ -1,5 +1,5 @@
 {
-  "name": "ember-cli-chart",
+  "name": "ember-cli-chartjs",
   "version": "2.0.6",
   "description": "Ember component for ChartJS",
   "directories": {
@@ -16,19 +16,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/aomran/ember-cli-chart.git"
+    "url": "https://github.com/busybusy/ember-cli-chartjs.git"
   },
   "keywords": [
     "ember-addon",
     "ember-cli",
     "chart"
   ],
-  "author": "Ahmed Omran",
+  "author": "Sean Stephens",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/aomran/ember-cli-chart/issues"
-  },
-  "homepage": "https://github.com/aomran/ember-cli-chart",
   "devDependencies": {
     "broccoli-asset-rev": "^2.2.0",
     "ember-cli": "1.13.15",
@@ -50,7 +46,8 @@
     "ember-try": "~0.0.8"
   },
   "keywords": [
-    "ember-addon"
+    "ember-addon",
+    "busybusy"
   ],
   "dependencies": {
     "ember-cli-babel": "^5.1.5"
