@@ -2,7 +2,7 @@
 'use strict';
 
 module.exports = {
-  name: 'ember-cli-chart',
+  name: 'ember-cli-chartjs'
 
   included: function included(app) {
     this._super.included(app);
