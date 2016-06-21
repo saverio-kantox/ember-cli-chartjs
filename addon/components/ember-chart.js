@@ -11,8 +11,10 @@ import Ember from 'ember';
  */
 export default Ember.Component.extend(
 {
-	tagName: 'canvas',
-	attributeBindings: ['width', 'height'],
+	tagName: 'div',
+
+	width: 600,
+	height: 600,
 
 	setup: Ember.on('didInsertElement', function()
 	{
