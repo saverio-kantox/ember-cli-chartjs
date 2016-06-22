@@ -34,7 +34,6 @@ export default Ember.Object.extend(
 
 		let otherTotal = 0;
 
-		console.log(this.get('model'));
 		if(!Ember.isNone(this.get('model'))) {
 			this.get('model').slice(showing).forEach((item, index) => {
 				if(index < (_length - 1))
