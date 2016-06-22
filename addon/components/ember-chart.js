@@ -3,50 +3,209 @@
  *
  */
 import Ember from 'ember';
+import layout from '../templates/components/ember-chart';
+import ChartObject from '../utils/chart-object';
 /* global Chart */
+
+function setDefault(object, key, value)
+{
+	if(Ember.isNone(Ember.get(object, key)))
+	{
+		Ember.set(object, key, value);
+	}
+}
 
 /**
  * `EmberChart`
  *
  */
-export default Ember.Component.extend(
-{
-	tagName: 'div',
-
+export default Ember.Component.extend({
+	model: null,
+	labelPath: null,
+	dataPath: null,
+	backText: "Back",
+	otherText: "Other",
 	width: 600,
 	height: 600,
 
-	setup: Ember.on('didInsertElement', function()
-	{
-		const context = this.get('element');
-		const data    = this.get('data');
-		const type    = this.get('type');
-		const options = this.get('options');
+	colors: Ember.computed(function() {
+		return null;
+	}),
 
-		const chart = new Chart(context, {
-		  type: type,
-		  data: data,
-		  options: options
+	layout,
+
+	_page: 0,
+	_chartObject: null,
+
+	didInsertElement() {
+		this._super(...arguments);
+
+		const _chartObject = ChartObject.create({
+			model: this.get('model'),
+			labelPath: this.get('labelPath'),
+			dataPath: this.get('dataPath'),
+			colors: this.get('colors'),
+			otherTitle: this.get('otherText'),
+			page: this.get('_page'),
 		});
 
+		const context = this.$().find('canvas').get(0);
+		const type    = this.get('type');
+		const options = this.setDefaultOptions(this.get('options'));
+
+		const chart = new Chart(context, {
+			type: type,
+			data: _chartObject,
+			options: options
+		});
+
+		_chartObject.set('__chart', chart);
+
+		this.set('_chartObject', _chartObject);
 		this.set('chart', chart);
-		this.addObserver('data', this, this.updateChart);
-		this.addObserver('data.[]', this, this.updateChart);
+		this.addObserver('model', this, this.updateChart);
+		this.addObserver('model.[]', this, this.updateChart);
+		this.addObserver('_page', this, this.updateChart);
+		this.addObserver('colors.[]', this, this.updateChart);
 		this.addObserver('options', this, this.updateChart);
-	}),
+	},
 
-	teardown: Ember.on('willDestroyElement', function()
-	{
+	willDestroyElement() {
+		this._super(...arguments);
+
 		this.get('chart').destroy();
-		this.removeObserver('data', this, this.updateChart);
-		this.removeObserver('data.[]', this, this.updateChart);
+		this.removeObserver('model', this, this.updateChart);
+		this.removeObserver('model.[]', this, this.updateChart);
+		this.removeObserver('_page', this, this.updateChart);
+		this.removeObserver('colors.[]', this, this.updateChart);
+		this.removeObserver('options', this, this.updateChart);
+	},
+
+	setDefaultOptions(options) {
+		const _this = this;
+
+		// set options
+		options = options || {};
+
+		// set onClick options
+		let oldOnClick = function(){};
+		if(options.onClick) {oldOnClick = options.onClick;}
+
+		options.onClick = function() {
+			_this.clickAction.apply(_this, arguments);
+			oldOnClick.apply(this, arguments);
+		};
+
+		// set legend options
+		options.legend = options.legend || {};
+
+		setDefault(options.legend, 'display', true);
+		setDefault(options.legend, 'position', 'bottom');
+		setDefault(options.legend, 'fullWidth', true);
+
+		// set tooltip options
+		options.tooltips = options.tooltips || {};
+
+		setDefault(options.tooltips, 'enabled', true);
+		setDefault(options.tooltips, 'mode', 'single');
+		setDefault(options.tooltips, 'backgroundColor', 'rgba(240,240,240,1)');
+		setDefault(options.tooltips, 'titleFontColor', '#444');
+		setDefault(options.tooltips, 'bodyFontColor', '#444');
+		setDefault(options.tooltips, 'bodySpacing', '0');
+		setDefault(options.tooltips, 'bodyFontStyle', 'italic');
+		setDefault(options.tooltips, 'footerFontColor', '#444');
+		setDefault(options.tooltips, 'xPadding', 10);
+		setDefault(options.tooltips, 'yPadding', 15);
+		setDefault(options.tooltips, 'caretSize', 10);
+		setDefault(options.tooltips, 'cornerRadius', 3);
+		setDefault(options.tooltips, 'multiKeybackground', '#999');
+
+		// set tooltip callbacks
+		options.tooltips.callbacks = options.tooltips.callbacks || {};
+
+		setDefault(options.tooltips.callbacks, 'label', function(tooltip, data) {
+			const label = data.labels[tooltip.index];
+			const value = data.datasets[tooltip.datasetIndex].data[tooltip.index];
+
+			if(Ember.isEmpty(label))
+			{
+				if(Ember.isEmpty(value))
+				{
+					return;
+				}
+				return value;
+			}
+			else if(Ember.isEmpty(value))
+			{
+				return label;
+			}
+
+			return _this.tooltip(label, value);
+		});
+
+		// return options with defaults
+		return options;
+	},
+
+	clickAction(evt, segment) {
+		segment = segment[0] || {};
+		let segmentModel = segment._model;
+		if(segmentModel && segmentModel.label === 'Other') {
+			this.set('_page', this.get('_page') + 1);
+			this.set('showBackButton', true);
+		} else if(segmentModel && segmentModel.label) {
+			let index = ((this.get('colors.length') - 2) * this.get('_page')) + segment._index;
+			let model = this.get('_chartObject').getModel(index);
+			if(!Ember.isNone(model)) {
+				this.sendAction('onClick', model);
+			}
+		}
+	},
+
+	tooltip(label, value) {
+		return label + ': ' + value;
+	},
+
+	updateChart() {
+		//var chart = this.get('chart');
+		var data = this.get('_chartObject');
+
+		if(this.get('model.length') !== data.get('model.length'))
+		{
+			data.set('model', this.get('model'));
+		}
+
+		if(this.get('colors.length') !== data.get('colors.length'))
+		{
+			data.set('colors', this.get('colors'));
+		}
+
+		if(this.get('_page') !== data.get('page'))
+		{
+			data.set('page', this.get('_page'));
+		}
+
+		//chart.config.data = data;
+		//chart.update();
+	},
+
+	buttonDisplay: Ember.computed('showBackButton', function() {
+		if(this.get('showBackButton')) {
+			return Ember.String.htmlSafe('display:block; position:absolute; top:0; left:0;');
+		}
+
+		return Ember.String.htmlSafe('display:none; position:absolute;');
 	}),
 
-	updateChart()
-	{
-		var chart = this.get('chart');
-		var data = this.get('data');
-		chart.config.data = data;
-		chart.update();
+	actions: {
+		backAction() {
+			let segments = (this.get('_page') - 1);
+			if(segments <= 0) {
+				segments = 0;
+				this.set('showBackButton', false);
+			}
+
+			this.set('_page', segments);
+		}
 	}
 });

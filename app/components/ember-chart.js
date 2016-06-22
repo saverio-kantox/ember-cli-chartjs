@@ -1,3 +1,1 @@
-import EmberChart from 'ember-cli-chart/components/ember-chart';
-
-export default EmberChart;
+export { default } from 'ember-cli-chartjs/components/ember-chart';
