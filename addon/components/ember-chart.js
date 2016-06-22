@@ -28,6 +28,8 @@ export default Ember.Component.extend({
 	width: 600,
 	height: 600,
 
+	isModel: false,
+
 	colors: Ember.computed(function() {
 		return null;
 	}),
@@ -40,14 +42,26 @@ export default Ember.Component.extend({
 	didInsertElement() {
 		this._super(...arguments);
 
-		const _chartObject = ChartObject.create({
-			model: this.get('model'),
-			labelPath: this.get('labelPath'),
-			dataPath: this.get('dataPath'),
-			colors: this.get('colors'),
-			otherTitle: this.get('otherText'),
-			page: this.get('_page'),
-		});
+		let _chartObject;
+		if(!Ember.isNone(this.get('model')))
+		{
+			this.set('isModel', true);
+
+			_chartObject = ChartObject.create({
+				model: this.get('model'),
+				labelPath: this.get('labelPath'),
+				dataPath: this.get('dataPath'),
+				colors: this.get('colors'),
+				otherTitle: this.get('otherText'),
+				page: this.get('_page'),
+			});
+		}
+		else
+		{
+			this.set('isModel', false);
+
+			_chartObject = this.get('data');
+		}
 
 		const context = this.$().find('canvas').get(0);
 		const type    = this.get('type');
@@ -59,14 +73,24 @@ export default Ember.Component.extend({
 			options: options
 		});
 
-		_chartObject.set('__chart', chart);
 
-		this.set('_chartObject', _chartObject);
 		this.set('chart', chart);
-		this.addObserver('model', this, this.updateChart);
-		this.addObserver('model.[]', this, this.updateChart);
-		this.addObserver('_page', this, this.updateChart);
-		this.addObserver('colors.[]', this, this.updateChart);
+
+		if(this.get('isModel'))
+		{
+			_chartObject.set('__chart', chart);
+			this.set('_chartObject', _chartObject);
+
+			this.addObserver('model', this, this.updateChart);
+			this.addObserver('model.[]', this, this.updateChart);
+			this.addObserver('_page', this, this.updateChart);
+			this.addObserver('colors.[]', this, this.updateChart);
+		}
+		else
+		{
+			this.addObserver('data', this, this.updateChart);
+			this.addObserver('data.[]', this, this.updateChart);
+		}
 		this.addObserver('options', this, this.updateChart);
 	},
 
@@ -74,6 +98,8 @@ export default Ember.Component.extend({
 		this._super(...arguments);
 
 		this.get('chart').destroy();
+		this.addObserver('data', this, this.updateChart);
+		this.addObserver('data.[]', this, this.updateChart);
 		this.removeObserver('model', this, this.updateChart);
 		this.removeObserver('model.[]', this, this.updateChart);
 		this.removeObserver('_page', this, this.updateChart);
@@ -148,17 +174,21 @@ export default Ember.Component.extend({
 	},
 
 	clickAction(evt, segment) {
-		segment = segment[0] || {};
-		let segmentModel = segment._model;
-		if(segmentModel && segmentModel.label === 'Other') {
-			this.set('_page', this.get('_page') + 1);
-			this.set('showBackButton', true);
-		} else if(segmentModel && segmentModel.label) {
-			let index = ((this.get('colors.length') - 2) * this.get('_page')) + segment._index;
-			let model = this.get('_chartObject').getModel(index);
-			if(!Ember.isNone(model)) {
-				this.sendAction('onClick', model);
+		if(this.get('isModel')) {
+			segment = segment[0] || {};
+			let segmentModel = segment._model;
+			if(segmentModel && segmentModel.label === 'Other') {
+				this.set('_page', this.get('_page') + 1);
+				this.set('showBackButton', true);
+			} else if(segmentModel && segmentModel.label) {
+				let index = ((this.get('colors.length') - 2) * this.get('_page')) + segment._index;
+				let model = this.get('_chartObject').getModel(index);
+				if(!Ember.isNone(model)) {
+					this.sendAction('onClick', model);
+				}
 			}
+		} else {
+			this.sendAction('onClick', evt, segment);
 		}
 	},
 
@@ -167,26 +197,29 @@ export default Ember.Component.extend({
 	},
 
 	updateChart() {
-		//var chart = this.get('chart');
-		var data = this.get('_chartObject');
+		let data;
+		if(this.get('isModel')) {
+			data = this.get('_chartObject');
+			if(this.get('model.length') !== data.get('model.length'))
+			{
+				data.set('model', this.get('model'));
+			}
 
-		if(this.get('model.length') !== data.get('model.length'))
-		{
-			data.set('model', this.get('model'));
+			if(this.get('colors.length') !== data.get('colors.length'))
+			{
+				data.set('colors', this.get('colors'));
+			}
+
+			if(this.get('_page') !== data.get('page'))
+			{
+				data.set('page', this.get('_page'));
+			}
+		} else {
+			data = this.get('data');
+			const chart = this.get('chart');
+			chart.config.data = data;
+			chart.update();
 		}
-
-		if(this.get('colors.length') !== data.get('colors.length'))
-		{
-			data.set('colors', this.get('colors'));
-		}
-
-		if(this.get('_page') !== data.get('page'))
-		{
-			data.set('page', this.get('_page'));
-		}
-
-		//chart.config.data = data;
-		//chart.update();
 	},
 
 	buttonDisplay: Ember.computed('showBackButton', function() {

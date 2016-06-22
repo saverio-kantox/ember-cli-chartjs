@@ -25,6 +25,7 @@ export default Ember.Object.extend(
 	setup: function() {
 		Ember.assert("labelPath must be set to parse the model objects for labels <ember-chart::labelPath>", !Ember.isEmpty(this.get('labelPath')));
 		Ember.assert("dataPath must be set to parse the model objects for data values <ember-chart::dataPath>", !Ember.isEmpty(this.get('dataPath')));
+		Ember.assert("colors must be set so the chart can render <ember-chart::colors>", !Ember.isEmpty(this.get('colors')));
 
 		const _length = Ember.get(this, 'colors.length') - 1;
 		const showing = this.get('page') * (_length - 1);
@@ -33,6 +34,7 @@ export default Ember.Object.extend(
 
 		let otherTotal = 0;
 
+		console.log(this.get('model'));
 		if(!Ember.isNone(this.get('model'))) {
 			this.get('model').slice(showing).forEach((item, index) => {
 				if(index < (_length - 1))
