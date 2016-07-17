@@ -62,8 +62,8 @@ export default Ember.Component.extend({
 			this.addObserver('data', this, this.updateChart);
 			this.addObserver('data.[]', this, this.updateChart);
 		}
-		this.addObserver('options', this, this.updateChart);
-		this.addObserver('type', this, this.chartTypeChanged);
+		this.addObserver('options', this, this.redrawChart);
+		this.addObserver('type', this, this.redrawChart);
 	},
 
   createChart: function() {
@@ -111,11 +111,11 @@ export default Ember.Component.extend({
 		this.removeObserver('model.[]', this, this.updateChart);
 		this.removeObserver('_page', this, this.updateChart);
 		this.removeObserver('colors.[]', this, this.updateChart);
-		this.removeObserver('options', this, this.updateChart);
-		this.removeObserver('type', this, this.chartTypeChanged);
+		this.removeObserver('options', this, this.redrawChart);
+		this.removeObserver('type', this, this.redrawChart);
 	},
 
-  chartTypeChanged: function() {
+  redrawChart: function() {
     var existingChart = this.get('chart');
     if (existingChart) {
       existingChart.destroy();
