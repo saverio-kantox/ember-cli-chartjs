@@ -16,9 +16,9 @@ test('it can be a pie chart', function(assert) {
   var component = this.subject({
     type: 'pie',
     model: testData.get('pieModelData'),
-	labelPath: 'label',
-	dataPath: 'value',
-	colors: testData.get('pieModelDataColors')
+    labelPath: 'label',
+    dataPath: 'value',
+    colors: testData.get('pieModelDataColors')
   });
 
   this.render();
@@ -121,4 +121,44 @@ test('it should update charts dynamically', function(assert) {
 
   chart = component.get('chart');
   assert.equal(chart.data.labels[0], 'December');
+});
+
+test('it should update chart options dynamically', function(assert) {
+  var component = this.subject({
+    type: 'bar',
+    data: testData.get('lineData')
+  });
+
+  this.render();
+  var chart = component.get('chart');
+
+  assert.equal(chart.config.type, 'bar');
+  assert.equal(chart.data.datasets.length, 2);
+  assert.equal(chart.options.responsive, true);
+  assert.equal(chart.config.options.responsive, true);
+
+  var options = { responsive: false };
+  component.set('options', options);
+
+  chart = component.get('chart');
+  assert.equal(chart.options.responsive, false);
+  assert.equal(chart.config.options.responsive, false);
+});
+
+test('it should rebuild the chart (line -> bar) if the chart type changes', function(assert) {
+  var component = this.subject({
+    type: 'line',
+    data: testData.get('lineData')
+  });
+
+  this.render();
+  var chart = component.get('chart');
+  assert.equal(chart.config.type, 'line');
+
+  //Update Type -- change to bar type
+  component.set('type', 'bar');
+
+  chart = component.get('chart');
+
+  assert.equal(chart.config.type, 'bar');
 });
