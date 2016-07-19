@@ -9,7 +9,7 @@ This Ember CLI addon is a simple wrapper for [ChartJS](http://www.chartjs.org/) 
 ### Installation
 
 ```
-$ ember install ember-cli-chart
+$ ember install ember-cli-chartjs
 ```
 
 ### Usage
