@@ -93,12 +93,12 @@ export default Ember.Component.extend({
 	 */
 	createChart() {
 		let _chartObject;
+		const isModel = !Ember.isNone(this.get('model'));
+		this.set('isModel', isModel);
 
 		// if and ember model is passed in then
 		// setup the chart object to handle the model data
-		if(!Ember.isNone(this.get('model'))) {
-			this.set('isModel', true);
-
+		if(isModel) {
 			// create a ChartObject that converts an ember model
 			// to a chartjs data structure.
 			_chartObject = ChartObject.create({
@@ -126,8 +126,11 @@ export default Ember.Component.extend({
 			options: options
 		});
 
-		// and add the chart for internal reference
-		_chartObject.set('__chart', chart);
+		// add the chart to the chartObject if
+		// this is a model chartObject.
+		if(isModel) {
+			_chartObject.set('__chart', chart);
+		}
 
 		// store the ember model _chartObject
 		this.set('_chartObject', _chartObject);
