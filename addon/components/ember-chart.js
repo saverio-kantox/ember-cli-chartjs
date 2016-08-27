@@ -7,6 +7,8 @@ import Ember from 'ember';
 import layout from '../templates/components/ember-chart';
 import ChartObject from '../utils/chart-object';
 
+const { isNone, isEmpty, computed, get } = Ember;
+
 /***/
 
 /**
@@ -20,7 +22,7 @@ import ChartObject from '../utils/chart-object';
  * @param {mixed} The default value to set
  */
 function setDefault(object, key, value) {
-	if(Ember.isNone(Ember.get(object, key))) {
+	if(isNone(get(object, key))) {
 		Ember.set(object, key, value);
 	}
 }
@@ -40,7 +42,7 @@ export default Ember.Component.extend({
 
 	isModel: false,
 
-	colors: Ember.computed(function() {
+	colors: computed(function() {
 		return null;
 	}),
 
@@ -68,10 +70,9 @@ export default Ember.Component.extend({
 
 		if(this.get('isModel')) {
 			// add oberserver methods for the model
-			this.addObserver('model', this, this.updateChart);
-			this.addObserver('model.[]', this, this.updateChart);
-			this.addObserver('_page', this, this.updateChart);
-			this.addObserver('colors.[]', this, this.updateChart);
+			['model', 'model.[]', '_page', 'colors.[]'].forEach((observable) => {
+				this.addObserver(observable, this, this.updateChart);
+			});
 		} else {
 			// add observer methods for chart data
 			this.addObserver('data', this, this.updateChart);
@@ -92,33 +93,14 @@ export default Ember.Component.extend({
 	 * @returns {Chart} chartjs object class
 	 */
 	createChart() {
-		let _chartObject;
-		const isModel = !Ember.isNone(this.get('model'));
+		const isModel = !isNone(this.get('model'));
 		this.set('isModel', isModel);
 
-		// if and ember model is passed in then
-		// setup the chart object to handle the model data
-		if(isModel) {
-			// create a ChartObject that converts an ember model
-			// to a chartjs data structure.
-			_chartObject = ChartObject.create({
-				model: this.get('model'),
-				labelPath: this.get('labelPath'),
-				dataPath: this.get('dataPath'),
-				colors: this.get('colors'),
-				otherTitle: this.get('otherText'),
-				page: this.get('_page'),
-			});
-		} else {
-			// set isModel to false and use
-			// the chartjs style data array passed in
-			this.set('isModel', false);
-			_chartObject = this.get('data');
-		}
+		let _chartObject = this.initializeChartDataObject(isModel);
 
-		const context = this.$().find('canvas').get(0);
-		const type    = this.get('type');
-		const options = this.setDefaultOptions(this.get('options'));
+		const context = this.$().find('canvas').get(0),
+					type    = this.get('type'),
+					options = this.setDefaultOptions(this.get('options'));
 
 		const chart = new Chart(context, {
 			type: type,
@@ -138,6 +120,38 @@ export default Ember.Component.extend({
 		// return the chartjs class
 		return chart;
 	},
+
+	/**
+	 * Creates a chart data object with the type and values
+	 * passed in.
+	 *
+	 * @public
+	 * @method initializeChartDataObject
+	 * @returns {ChartObject}
+	 */
+	initializeChartDataObject(isModel){
+    let _chartObject;
+    // if and ember model is passed in then
+    // setup the chart object to handle the model data
+    if(isModel) {
+      // create a ChartObject that converts an ember model
+      // to a chartjs data structure.
+      _chartObject = ChartObject.create({
+        model: this.get('model'),
+        labelPath: this.get('labelPath'),
+        dataPath: this.get('dataPath'),
+        colors: this.get('colors'),
+        otherTitle: this.get('otherText'),
+        page: this.get('_page'),
+      });
+    } else {
+      // set isModel to false and use
+      // the chartjs style data array passed in
+      _chartObject = this.get('data');
+    }
+
+    return _chartObject;
+  },
 
 	/**
 	 * Ember callback gets called when the component is getting destroyed
@@ -216,12 +230,12 @@ export default Ember.Component.extend({
 			const label = data.labels[tooltip.index];
 			const value = data.datasets[tooltip.datasetIndex].data[tooltip.index];
 
-			if(Ember.isEmpty(label)) {
-				if(Ember.isEmpty(value)) {
+			if(isEmpty(label)) {
+				if(isEmpty(value)) {
 					return;
 				}
 				return value;
-			} else if(Ember.isEmpty(value)) {
+			} else if(isEmpty(value)) {
 				return label;
 			}
 
@@ -242,7 +256,7 @@ export default Ember.Component.extend({
 			} else if(segmentModel && segmentModel.label) {
 				let index = ((this.get('colors.length') - 2) * this.get('_page')) + segment._index;
 				let model = this.get('_chartObject').getModel(index);
-				if(!Ember.isNone(model)) {
+				if(!isNone(model)) {
 					this.sendAction('onClick', model);
 				}
 			}
@@ -278,7 +292,7 @@ export default Ember.Component.extend({
 		}
 	},
 
-	buttonDisplay: Ember.computed('showBackButton', function() {
+	buttonDisplay: computed('showBackButton', function() {
 		if(this.get('showBackButton')) {
 			return Ember.String.htmlSafe('display:block; position:absolute; top:0; left:0;');
 		}
