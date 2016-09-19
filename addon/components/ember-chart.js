@@ -214,7 +214,7 @@ export default Ember.Component.extend({
 		setDefault(options.tooltips, 'backgroundColor', 'rgba(240,240,240,1)');
 		setDefault(options.tooltips, 'titleFontColor', '#444');
 		setDefault(options.tooltips, 'bodyFontColor', '#444');
-		setDefault(options.tooltips, 'bodySpacing', '0');
+		setDefault(options.tooltips, 'bodySpacing', 0);
 		setDefault(options.tooltips, 'bodyFontStyle', 'italic');
 		setDefault(options.tooltips, 'footerFontColor', '#444');
 		setDefault(options.tooltips, 'xPadding', 10);
