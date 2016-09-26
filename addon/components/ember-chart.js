@@ -228,7 +228,10 @@ export default Ember.Component.extend({
 
 		setDefault(options.tooltips.callbacks, 'label', function(tooltip, data) {
 			const label = data.labels[tooltip.index];
-			const value = data.datasets[tooltip.datasetIndex].data[tooltip.index];
+			let value = data.datasets[tooltip.datasetIndex].data[tooltip.index];
+
+			// hack to make all zero charts show up.
+			value = value === 0.01 ? 0 : value;
 
 			if(isEmpty(label)) {
 				if(isEmpty(value)) {

@@ -39,7 +39,9 @@ export default Ember.Object.extend(
 				if(index < (_length - 1))
 				{
 					labels.push(Ember.get(item, this.get('labelPath')) || '');
-					data.push(Ember.get(item, this.get('dataPath')) || 0);
+
+					// 0.01 is a hack to make all zero charts show up.
+					data.push(Ember.get(item, this.get('dataPath')) || 0.01);
 				}
 				else
 				{
