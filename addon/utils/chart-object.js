@@ -45,7 +45,7 @@ export default Ember.Object.extend(
 				}
 				else
 				{
-					otherTotal += Ember.get(item, this.get('dataPath')) || 0;
+					otherTotal += Ember.get(item, this.get('dataPath')) || 0.01;
 				}
 			});
 		}
