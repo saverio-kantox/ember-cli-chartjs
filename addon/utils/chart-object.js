@@ -33,27 +33,24 @@ export default Ember.Object.extend(
 		const data = Ember.A([]);
 
 		let otherTotal = 0;
-
+		let hasOther = false;
 		if(!Ember.isNone(this.get('model'))) {
 			this.get('model').slice(showing).forEach((item, index) => {
-				if(index < (_length - 1))
-				{
+				if (index < (_length - 1)) {
 					labels.push(Ember.get(item, this.get('labelPath')) || '');
 
 					// 0.01 is a hack to make all zero charts show up.
 					data.push(Ember.get(item, this.get('dataPath')) || 0.01);
-				}
-				else
-				{
-					otherTotal += Ember.get(item, this.get('dataPath')) || 0.01;
+				} else {
+					hasOther = true;
+					otherTotal += Ember.get(item, this.get('dataPath')) || 0;
 				}
 			});
 		}
 
-		if(otherTotal > 0)
-		{
+		if (otherTotal > 0 || hasOther) {
 			labels.push(this.get('otherTitle'));
-			data.push(otherTotal);
+			data.push(otherTotal || 0.01);
 		}
 
 		this.set('labels', labels);
