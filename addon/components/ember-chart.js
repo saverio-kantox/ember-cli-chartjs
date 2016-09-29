@@ -143,6 +143,9 @@ export default Ember.Component.extend({
         colors: this.get('colors'),
         otherTitle: this.get('otherText'),
         page: this.get('_page'),
+				type: this.get('type'),
+				modelPath: this.get('modelPath') || ['model'],
+				options: this.get('options')
       });
     } else {
       // set isModel to false and use
