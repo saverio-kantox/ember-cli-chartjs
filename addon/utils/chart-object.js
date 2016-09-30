@@ -1,17 +1,25 @@
-
+/**
+ * @module Utils
+ *
+ */
 import Ember from 'ember';
 
-export default Ember.Object.extend(
-{
-	model: null,
-	colors: null,
-	labelPath: '',
-	dataPath: '',
-	otherTitle: 'Other',
-	page: 0,
-
-	modelPath: null,
+/**
+ * `Utils/ChartObject`
+ *
+ * @class ChartObject
+ */
+export default Ember.Object.extend({
+  model: null,
+  labelPath: null,
+  dataPath: null,
+	modelPath: '',
+  otherTitle: '',
+  page: 0,
+	pageSize: null,
 	type: '',
+	options: null,
+	chartOptions: null,
 
 	datasets: null,
 	labels: null,
@@ -20,7 +28,7 @@ export default Ember.Object.extend(
 		this.setup();
 	}),
 
-	_buildData: Ember.observer('model.[]', 'colors', 'page', function() {
+	_buildData: Ember.observer('model', 'page', function() {
 		this.setup();
 		this.get('__chart').update();
 	}),
@@ -28,112 +36,132 @@ export default Ember.Object.extend(
 	setup: function() {
 		Ember.assert("labelPath must be set to parse the model objects for labels <ember-chart::labelPath>", !Ember.isEmpty(this.get('labelPath')));
 		Ember.assert("dataPath must be set to parse the model objects for data values <ember-chart::dataPath>", !Ember.isEmpty(this.get('dataPath')));
-		Ember.assert("colors must be set so the chart can render <ember-chart::colors>", !Ember.isEmpty(this.get('colors')));
 
-		const type = this.get('type');
-		if (type === 'pie' || type === 'doughnut') {
-			this.setPieData();
-		} else if (type === 'bar') {
-			this.setBarData();
-		} else if (type === 'line') {
-			this.setLineData();
+		this.buildLabels();
+		this.generateDatasets();
+	},
+
+	generateDatasets() {
+		const datasets = Ember.A();
+		const dataPaths = this.get('dataPath');
+
+		this.get('modelPath').forEach((path, index) => {
+			const models = this.getModels(path);
+			const dataPath = dataPaths[index];
+
+			// make suer models were found at the path provided.
+			Ember.assert('The path provided returned no models', !Ember.isNone(models));
+			Ember.assert('The path provided did not return an array', Ember.isArray(models));
+
+			const data = Ember.A();
+			let hasOther = false;
+			let otherTotal = 0;
+
+			this.eachModel(models, (item, index, isActive) => {
+				if (isActive) {
+					// 0.01 is a hack to make all zero charts show up.
+					data.push(Ember.get(item, dataPath) || 0.01);
+				} else {
+					hasOther = true;
+					otherTotal += Ember.get(item, dataPath) || 0;
+				}
+			});
+
+			if (otherTotal > 0 || hasOther) {
+				data.push(otherTotal || 0.01);
+			}
+			const dataset = this.createDataset(data, index);
+			datasets.push(dataset);
+		});
+
+		this.set('datasets', datasets);
+	},
+
+	createDataset(data, index) {
+		const chartOptions = this.get('chartOptions') || {};
+		const dataset = Ember.Object.create({ data });
+
+		for (let i in chartOptions) {
+			if (chartOptions.hasOwnProperty(i)) {
+				let key = i;
+				if (i === 'labels') {
+					chartOptions.label = chartOptions.labels[index];
+					key = 'label';
+				} else if (i === 'dataTypes') {
+					chartOptions.dataType = chartOptions.dataTypes[index];
+					key = 'dataType';
+				}
+				this.setOption(dataset, chartOptions, key);
+			}
+		}
+
+		return dataset;
+	},
+
+	buildLabels() {
+		// add the ability to pass a static set of labels for multiple datasets.
+		const staticLabels = this.get('chartOptions.staticLabels');
+		if (!Ember.isNone(staticLabels) && Ember.isArray(staticLabels)) {
+			this.get('labels', staticLabels);
+		} else {
+			let hasOther = false;
+			const labels = Ember.A();
+			this.get('modelPath').forEach((path) => {
+				const models = this.getModels(path);
+
+				// make suer models were found at the path provided.
+				Ember.assert('The path provided returned no models', !Ember.isNone(models));
+				Ember.assert('The path provided did not return an array', Ember.isArray(models));
+
+				this.eachModel(models, (item, idx, isActive) => {
+					if (isActive) {
+						const lPath = this.get('labelPath');
+						const _label = Ember.get(item, lPath) || '';
+						if(labels.indexOf(_label) === -1) {
+							labels.push(_label);
+						} else {
+							hasOther = true;
+						}
+					}
+				});
+			});
+
+			if (hasOther) {
+				labels.push(this.get('otherTitle'));
+			}
+			this.set('labels', labels);
 		}
 	},
 
-	setPieData() {
-		const _length = Ember.get(this, 'colors.length') - 1;
-		const showing = this.get('page') * (_length - 1);
-		const labels = Ember.A();
-		const datasets = Ember.A();
+	setOption(data, object, key, defaultValue=null) {
+		const value = Ember.get(object, key);
+		if (!Ember.isNone(value) || !Ember.isNone(defaultValue)) {
+			Ember.set(data, key, (value || defaultValue));
+		}
+		return this;
+	},
 
-		this.get('modelPath').forEach(model => {
-			const data = Ember.A();
-			let otherTotal = 0;
-			let hasOther = false;
+	getModels(path) {
+		path = `model.${path}`.replace(/\.$/, '');
+		return this.get(path);
+	},
 
-			if(!Ember.isNone(this.get(model))) {
-				this.get(model).slice(showing).forEach((item, index) => {
-					if (index < (_length - 1)) {
-						const _label = Ember.get(item, this.get('labelPath')) || '';
-						if(labels.indexOf(_label) === -1) {
-							labels.push(_label);
-						}
+	eachModel(items, callback) {
+		const page = this.get('page');
+		const pageSize = this.get('pageSize') || items.get('length');
+		const min = (page * pageSize);
+		const max = (min + (pageSize-1));
 
-						// 0.01 is a hack to make all zero charts show up.
-						data.push(Ember.get(item, this.get('dataPath')) || 0.01);
-					} else {
-						hasOther = true;
-						otherTotal += Ember.get(item, this.get('dataPath')) || 0;
-					}
-				});
-
-				if (otherTotal > 0 || hasOther) {
-					labels.push(this.get('otherTitle'));
-					data.push(otherTotal || 0.01);
-				}
-
-				datasets.push(Ember.Object.create({
-					data: data,
-					backgroundColor: this.get('colors').slice(0, _length),
-					hoverBackgroundColor: this.get('colors').slice(_length)
-				}));
+		items.forEach((item, index) => {
+			if (index >= min && index <= max) {
+				callback(item, index, true);
+			} else {
+				callback(item, index, false);
 			}
 		});
 
-		this.set('labels', labels);
-		this.set('datasets', datasets);
+		return this;
 	},
-
-	setBarData() {
-		return;
-	},
-
-	setLineData() {
-		const labels = Ember.A();
-		const datasets = Ember.A();
-		const colors = this.get('colors') || [];
-		const legends = this.get('options.legends') || [];
-
-		Ember.assert('colors: must be an array of strings', Ember.isArray(colors));
-		Ember.assert('legends: must be an array of strings', Ember.isArray(legends));
-
-		this.get('modelPath').forEach((model, idx) => {
-			console.log(model, idx, colors, legends);
-			const data = Ember.A();
-			if(!Ember.isNone(this.get(model))) {
-				this.get(model).forEach(item => {
-					const _label = Ember.get(item, this.get('labelPath')) || '';
-					if(labels.indexOf(_label) === -1) {
-						labels.push(_label);
-					}
-					// 0.01 is a hack to make all zero charts show up.
-					data.push(Ember.get(item, this.get('dataPath')) || 0.01);
-				});
-			}
-
-			const _dataset = Ember.Object.create({ data });
-			if (!Ember.isNone(this.get('options.line'))) {
-				const options = this.get('options.line');
-				for (let i in options) {
-					if (options.hasOwnProperty(i)) {
-						_dataset.set(i, options[i]);
-					}
-				}
-			}
-
-			// set border and label
-			_dataset.set('borderColor', colors[idx]);
-			_dataset.set('backgroundColor', colors[idx]);
-			_dataset.set('label', legends[idx]);
-
-			console.log('dataset', _dataset, idx);
-			datasets.push(_dataset);
-		});
-
-		this.set('labels', labels);
-		this.set('datasets', datasets);
-	},
-
 
 	_dataset: Ember.computed(function() {
 		return this.get('datasets').objectAt(0);

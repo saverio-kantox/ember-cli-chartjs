@@ -32,24 +32,134 @@ function setDefault(object, key, value) {
  *
  */
 export default Ember.Component.extend({
-	model: null,
-	labelPath: null,
-	dataPath: null,
-	backText: "Back",
-	otherText: "Other",
-	width: 600,
-	height: 600,
-
-	isModel: false,
-
-	colors: computed(function() {
-		return null;
-	}),
-
 	layout,
+
+	// data properties
+
+	/**
+	 * Chartjs data object or an ember model
+	 *
+	 * @public
+	 * @property model
+	 * @type {object}
+	 */
+	model: null,
+
+	/**
+	 * The path of the property in the model to use
+	 * as the label for a data point.
+	 *
+	 * @public
+	 * @property labelPath
+	 * @type {string}
+	 */
+	labelPath: null,
+
+	/**
+	 * The path of the property in the model to use
+	 * as the data for a data point
+	 *
+	 * @public
+	 * @property dataPath
+	 * @type {string|array}
+	 */
+	dataPath: null,
+
+	/**
+	 * The path of each model in the model property to
+	 * use for each dataset.
+	 *
+	 * This property is optional and defaults to ['model'].
+	 *
+	 * @example
+	 *  if model === {somedata: [models], someotherdata: [models]}
+	 *  then modelPath === ["somedata", "someotherdata"]
+	 *  so dataset1 is somedata and dataset2 is someotherdata.
+	 *
+	 * @public
+	 * @property modelPath
+	 * @type {string|array}
+	 */
+	modelPath: '',
+
+	/**
+	 * Chart js options object.
+	 *
+	 * @public
+	 * @property options
+	 * @type object
+	 */
+	options: null,
+
+	/**
+	 * Options object for setting options on
+	 * a specific chart type.
+	 *
+	 * @public
+	 * @property chartOptions
+	 * @type object
+	 */
+	chartOptions: null,
+
+	// paging results properties
+
+	/**
+	 * The text to display when the back button is showing.
+	 *
+	 * @public
+	 * @property backText
+	 * @type string
+	 */
+	backText: "Back",
+
+	/**
+	 * Text to display for the label of the other result when paging.
+	 *
+	 * @public
+	 * @property otherText
+	 * @type string
+	 */
+	otherText: "Other",
+
+	/**
+	 * The size of the results to show.
+	 *
+	 * This will show one less than the pagesize plus a result
+	 * that is other. The other result can be clicked to show more results.
+	 *
+	 * @public
+	 * @property pageSize
+	 * @default null - all results.
+	 * @type number
+	 */
+	pageSize: null,
+
+
+	// chart html properties
+
+	/**
+	 * width of the chart.
+	 *
+	 * @public
+	 * @property width
+	 * @default 600
+	 * @type number
+	 */
+	width: 600,
+
+	/**
+	 * height of the chart.
+	 *
+	 * @public
+	 * @property height
+	 * @default 600
+	 * @type number
+	 */
+	height: 600,
 
 	_page: 0,
 	_chartObject: null,
+	isModel: false,
 
 	/**
 	 * Ember init function gets called when the component
@@ -137,15 +247,16 @@ export default Ember.Component.extend({
       // create a ChartObject that converts an ember model
       // to a chartjs data structure.
       _chartObject = ChartObject.create({
-        model: this.get('model'),
-        labelPath: this.get('labelPath'),
-        dataPath: this.get('dataPath'),
-        colors: this.get('colors'),
-        otherTitle: this.get('otherText'),
-        page: this.get('_page'),
-				type: this.get('type'),
-				modelPath: this.get('modelPath') || ['model'],
-				options: this.get('options')
+        model: this.get('model'), // model object
+        labelPath: this.get('labelPath'), // path of the label to display in the provided model.
+        dataPath: this.getTypeAsArray('dataPath'), // path of the data to display in the provided model.
+				modelPath: this.getTypeAsArray('modelPath'), // path of each model in the model object.
+        otherTitle: this.get('otherText'), // title to display for last result when paging.
+        page: this.get('_page'), // internal paging for limiting chart results size.
+				pageSize: this.get('pageSize'), // page size for limiting chart result szie.
+				type: this.get('type'), // chart type
+				options: this.get('options'), // chartjs options
+				chartOptions: this.get('chartOptions') // chartjs chart specific options
       });
     } else {
       // set isModel to false and use
@@ -155,6 +266,22 @@ export default Ember.Component.extend({
 
     return _chartObject;
   },
+
+	getTypeAsArray(type, defaultValue) {
+		let arr = this.get(type);
+		if (Ember.isNone(arr)) {
+			if (!Ember.isNone(defaultValue)) {
+				arr = defaultValue;
+			} else {
+				arr = [];
+			}
+		}
+
+		if (typeof arr === 'string') {
+			arr = arr.split(',');
+		}
+		return arr;
+	},
 
 	/**
 	 * Ember callback gets called when the component is getting destroyed
@@ -231,6 +358,7 @@ export default Ember.Component.extend({
 
 		setDefault(options.tooltips.callbacks, 'label', function(tooltip, data) {
 			const label = data.labels[tooltip.index];
+			const dataType = data.datasets[tooltip.datasetIndex].dataType;
 			let value = data.datasets[tooltip.datasetIndex].data[tooltip.index];
 
 			// hack to make all zero charts show up.
@@ -245,7 +373,7 @@ export default Ember.Component.extend({
 				return label;
 			}
 
-			return _this.tooltip(label, value);
+			return _this.tooltip(label, value, dataType);
 		});
 
 		// return options with defaults
