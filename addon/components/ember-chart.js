@@ -124,7 +124,7 @@ export default Ember.Component.extend({
 	/**
 	 * The size of the results to show.
 	 *
-	 * This will show one less than the pagesize plus a result
+	 * This will show one less than the pageSize plus a result
 	 * that is other. The other result can be clicked to show more results.
 	 *
 	 * @public
@@ -329,6 +329,10 @@ export default Ember.Component.extend({
 			oldOnClick.apply(this, arguments);
 		};
 
+		// add responsive options
+		setDefault(options, 'responsive', true);
+		setDefault(options, 'maintainAspectRatio', false);
+
 		// set legend options
 		options.legend = options.legend || {};
 
@@ -393,9 +397,54 @@ export default Ember.Component.extend({
 				if(!isNone(model)) {
 					this.sendAction('onClick', model);
 				}
+			} else {
+				// expiremental
+				//this.getClickedLabel(evt);
 			}
 		} else {
 			this.sendAction('onClick', evt, segment);
+		}
+	},
+
+	getClickedLabel(evt) {
+		const _chart = this.get('chart');
+		const helpers = Chart.helpers;
+
+		// hack to fix error in helper method
+		_chart.currentDevicePixelRatio = 1;
+		const pos = helpers.getRelativePosition(evt, _chart);
+
+		let scale = _chart.scale;
+		if (Ember.isNone(scale)) {
+			for(let i in _chart.scales) {
+				if (_chart.scales.hasOwnProperty(i) && Ember.isNone(scale)) {
+					scale = _chart.scales[i];
+				}
+			}
+		}
+
+		let closestPixel = null;
+		let closestPixelDistance = 10000000;
+		let tickLabel = '';
+		// loop through all the labels
+		helpers.each(scale.ticks, function(label, index) {
+			const pixel = this.getPixelForTick(index, true);
+			const distance = Math.abs(pos.x - pixel);
+			if(distance < closestPixelDistance) {
+				closestPixel = index;
+				closestPixelDistance = distance;
+				tickLabel = label;
+			}
+		}, scale);
+
+		if (tickLabel === 'Other') {
+			this.set('_page', this.get('_page') + 1);
+			this.set('showBackButton', true);
+		} else {
+			const model = this.get('_chartObject').getModel(closestPixel);
+			if(!isNone(model)) {
+				this.sendAction('onClick', model);
+			}
 		}
 	},
 

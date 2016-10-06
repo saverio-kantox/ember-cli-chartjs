@@ -57,20 +57,22 @@ export default Ember.Object.extend({
 			let hasOther = false;
 			let otherTotal = 0;
 
-			this.eachModel(models, (item, index, isActive) => {
+			this.eachModel(models, (item, index, isActive, isOther) => {
 				if (isActive) {
 					// 0.01 is a hack to make all zero charts show up.
-					data.push(Ember.get(item, dataPath) || 0.01);
-				} else {
+					data.push((Ember.get(item, dataPath) || 0.01));
+				} else if (isOther) {
 					hasOther = true;
-					otherTotal += Ember.get(item, dataPath) || 0;
+					otherTotal = otherTotal + (Ember.get(item, dataPath) || 0);
 				}
 			});
 
 			if (otherTotal > 0 || hasOther) {
-				data.push(otherTotal || 0.01);
+				data.push((otherTotal || 0.01));
 			}
+
 			const dataset = this.createDataset(data, index);
+			datasets.set('path', path);
 			datasets.push(dataset);
 		});
 
@@ -84,12 +86,9 @@ export default Ember.Object.extend({
 		for (let i in chartOptions) {
 			if (chartOptions.hasOwnProperty(i)) {
 				let key = i;
-				if (i === 'labels') {
-					chartOptions.label = chartOptions.labels[index];
-					key = 'label';
-				} else if (i === 'dataTypes') {
-					chartOptions.dataType = chartOptions.dataTypes[index];
-					key = 'dataType';
+				if(/^_/.test(i)) {
+					key = i.replace(/^_/, '');
+					chartOptions[key] = chartOptions[i][index];
 				}
 				this.setOption(dataset, chartOptions, key);
 			}
@@ -113,15 +112,14 @@ export default Ember.Object.extend({
 				Ember.assert('The path provided returned no models', !Ember.isNone(models));
 				Ember.assert('The path provided did not return an array', Ember.isArray(models));
 
-				this.eachModel(models, (item, idx, isActive) => {
+				this.eachModel(models, (item, idx, isActive, isOther) => {
 					if (isActive) {
-						const lPath = this.get('labelPath');
-						const _label = Ember.get(item, lPath) || '';
+						const _label = Ember.get(item, this.get('labelPath')) || '';
 						if(labels.indexOf(_label) === -1) {
 							labels.push(_label);
-						} else {
-							hasOther = true;
 						}
+					} else if (isOther) {
+						hasOther = true;
 					}
 				});
 			});
@@ -154,9 +152,11 @@ export default Ember.Object.extend({
 
 		items.forEach((item, index) => {
 			if (index >= min && index <= max) {
-				callback(item, index, true);
+				callback(item, index, true, false);
+			} else if (index > max) {
+				callback(item, index, false, true);
 			} else {
-				callback(item, index, false);
+				callback(item, index, false, false);
 			}
 		});
 
@@ -168,17 +168,12 @@ export default Ember.Object.extend({
 	}),
 
 	getModel: function(index) {
-		const models = this.get('model');
-
-		if(models && models.objectAt && models.objectAt(index))
-		{
+		const models = this.getModels(this.get('modelPath')[0]);
+		if (models && models.objectAt && models.objectAt(index)) {
 			return models.objectAt(index);
-		}
-		else if(models && models[index])
-		{
+		} else if (models && models[index]) {
 			return models[index];
 		}
-
 		return null;
 	}
 });
