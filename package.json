@@ -1,6 +1,6 @@
 {
   "name": "ember-cli-chartjs",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "Ember component for ChartJS",
   "keywords": [
     "ember-addon",
