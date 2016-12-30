@@ -45,7 +45,8 @@ export default Ember.Object.extend({
 		const datasets = Ember.A();
 		const dataPaths = this.get('dataPath');
 
-		this.get('modelPath').forEach((path, index) => {
+		const modelPath = (this.get('modelPath') || []);
+		modelPath.forEach((path, index) => {
 			const models = this.getModels(path);
 			const dataPath = dataPaths[index];
 
@@ -105,7 +106,8 @@ export default Ember.Object.extend({
 		} else {
 			let hasOther = false;
 			const labels = Ember.A();
-			this.get('modelPath').forEach((path) => {
+			const modelPath = (this.get('modelPath') || []);
+			modelPath.forEach((path) => {
 				const models = this.getModels(path);
 
 				// make suer models were found at the path provided.
@@ -146,7 +148,12 @@ export default Ember.Object.extend({
 
 	eachModel(items, callback) {
 		const page = this.get('page');
-		const pageSize = this.get('pageSize') || items.get('length');
+
+		let pageSize = this.get('pageSize');
+		if (Ember.isNone(pageSize)) {
+			pageSize = items.get ? items.get('length') : items.length;
+		}
+
 		const min = (page * pageSize);
 		const max = (min + (pageSize-1));
 
